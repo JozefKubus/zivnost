@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evidencia pre paušálne výdavky</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <h1 class="text-3xl font-bold text-gray-900"><i class="fas fa-wallet text-blue-600 mr-2"></i>Evidencia Živnostníka</h1>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="exportToCSV()" class="bg-green-600 text-white text-sm font-semibold py-2 px-3 rounded hover:bg-green-700 transition shadow">
+                    <i class="fas fa-file-excel mr-1"></i> Export do CSV
+                </button>
+                <button onclick="exportToJSON()" class="bg-gray-600 text-white text-sm font-semibold py-2 px-3 rounded hover:bg-gray-700 transition shadow">
+                    <i class="fas fa-download mr-1"></i> Zálohovať (JSON)
+                </button>
+                <button onclick="triggerImport()" class="bg-gray-600 text-white text-sm font-semibold py-2 px-3 rounded hover:bg-gray-700 transition shadow">
+                    <i class="fas fa-upload mr-1"></i> Načítať zálohu
+                </button>
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importFromJSON(event)">
+                <button onclick="clearData()" class="bg-red-100 text-red-700 text-sm font-semibold py-2 px-3 rounded hover:bg-red-200 transition shadow">
+                    Vymazať všetko
+                </button>
+            </div>
+        </div>
+
+        <div class="flex border-b border-gray-200 mb-6 gap-2">
+            <button id="tab-btn-evidencia" onclick="switchTab('evidencia')" class="py-2 px-4 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition">
+                <i class="fas fa-list-alt mr-2"></i>Hlavná evidencia
+            </button>
+            <button id="tab-btn-partneri" onclick="switchTab('partneri')" class="py-2 px-4 font-medium text-sm text-gray-500 hover:text-gray-700 border-b-2 border-transparent transition">
+                <i class="fas fa-users mr-2"></i>Obchodní partneri (<span id="partner-count">0</span>)
+            </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mb-8 border-t-4 border-gray-800">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-id-card mr-2 text-gray-600"></i>Moje firemné údaje</h2>
+                <button id="toggle-profile-btn" onclick="toggleProfileEdit()" class="text-blue-600 text-sm font-medium hover:underline">
+                    <i class="fas fa-pen mr-1"></i>Upraviť údaje
+                </button>
+            </div>
+            <div id="profile-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                <div><span class="block text-gray-500 text-xs uppercase font-semibold">Obchodné meno</span> <span id="disp-meno" class="font-medium text-gray-900">-</span></div>
+                <div><span class="block text-gray-500 text-xs uppercase font-semibold">IČO</span> <span id="disp-ico" class="font-medium text-gray-900">-</span></div>
+                <div><span class="block text-gray-500 text-xs uppercase font-semibold">DIČ</span> <span id="disp-dic" class="font-medium text-gray-900">-</span></div>
+                <div><span class="block text-gray-500 text-xs uppercase font-semibold">Sídlo</span> <span id="disp-sidlo" class="font-medium text-gray-900">-</span></div>
+                <div><span class="block text-gray-500 text-xs uppercase font-semibold">IBAN</span> <span id="disp-iban" class="font-medium text-gray-900">-</span></div>
+            </div>
+            <form id="profile-form" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" onsubmit="saveProfile(event)">
+                <div><label class="block text-xs font-semibold text-gray-700 mb-1">Obchodné meno</label><input type="text" id="prof-meno" class="w-full border-gray-300 rounded p-2 border text-sm"></div>
+                <div><label class="block text-xs font-semibold text-gray-700 mb-1">IČO</label><input type="text" id="prof-ico" class="w-full border-gray-300 rounded p-2 border text-sm"></div>
+                <div><label class="block text-xs font-semibold text-gray-700 mb-1">DIČ</label><input type="text" id="prof-dic" class="w-full border-gray-300 rounded p-2 border text-sm"></div>
+                <div class="md:col-span-2"><label class="block text-xs font-semibold text-gray-700 mb-1">Sídlo</label><input type="text" id="prof-sidlo" class="w-full border-gray-300 rounded p-2 border text-sm"></div>
+                <div><label class="block text-xs font-semibold text-gray-700 mb-1">IBAN</label><input type="text" id="prof-iban" class="w-full border-gray-300 rounded p-2 border text-sm"></div>
+                <div class="md:col-span-2 lg:col-span-3 flex justify-end mt-2 pt-4 border-t gap-2">
+                    <button type="button" onclick="toggleProfileEdit()" class="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded">Zrušiť</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-bold text-white bg-gray-800 rounded">Uložiť údaje</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="tab-content-evidencia" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Pre daňové účely (Paušál)</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                            <h3 class="text-gray-500 text-xs font-semibold uppercase">Príjmy (Základ dane)</h3>
+                            <p class="text-xl font-bold mt-1 text-green-600" id="stat-prijmy">0.00 €</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                            <h3 class="text-gray-500 text-xs font-semibold uppercase">Zaplatené odvody</h3>
+                            <p class="text-xl font-bold mt-1 text-red-600" id="stat-odvody">0.00 €</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Interný prehľad</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><h3 class="text-gray-500 text-xs font-semibold uppercase">Vystavené Fa</h3><p class="text-xl font-bold mt-1 text-blue-600" id="stat-faktury">0.00 €</p></div>
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-orange-400"><h3 class="text-gray-500 text-xs font-semibold uppercase">Prijaté Fa</h3><p class="text-xl font-bold mt-1 text-orange-600" id="stat-prijate-fa">0.00 €</p></div>
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500"><h3 class="text-gray-500 text-xs font-semibold uppercase">Výdavky</h3><p class="text-xl font-bold mt-1 text-purple-600" id="stat-vydavky">0.00 €</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow h-fit xl:col-span-1 border-t-2 border-blue-500">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">Nový záznam</h2>
+                    <form id="record-form" onsubmit="handleRecordSubmit(event, 'add')">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Typ záznamu</label>
+                            <select id="type" onchange="toggleParentField('type', 'parent-container', 'parent-select'); updateDateLabel('type', 'lbl-date-uhr')" class="w-full border-gray-300 rounded p-2 border bg-white text-sm" required>
+                                <optgroup label="Moje príjmy a dane">
+                                    <option value="faktura">Vystavená faktúra (Pohľadávka)</option>
+                                    <option value="prijem">Úhrada faktúry (Reálny príjem)</option>
+                                    <option value="odvod">Zaplatené odvody (SP/ZP)</option>
+                                </optgroup>
+                                <optgroup label="Interné výdavky">
+                                    <option value="prijata_faktura">Prijatá faktúra (Záväzok)</option>
+                                    <option value="vydavok">Zaplatený výdavok (Nákup/Úhrada)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div id="parent-container" class="mb-4 hidden">
+                            <label class="block text-xs font-bold text-blue-700 mb-1 italic">Párovať k faktúre</label>
+                            <select id="parent-select" onchange="fillFromParent('parent-select', 'amount', 'description', 'record-partner', 'record-vs', 'record-ks', 'record-ss')" class="w-full border-blue-300 rounded p-2 border bg-blue-50 text-sm">
+                                <option value="">-- Vyber doklad --</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Partner</label>
+                            <select id="record-partner" class="w-full border-gray-300 rounded p-2 border bg-white text-sm">
+                                <option value="">-- Žiadny partner --</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Popis</label>
+                            <input type="text" id="description" class="w-full border-gray-300 rounded p-2 border text-sm" required>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <div><label class="text-xs font-medium text-gray-500">VS</label><input type="text" id="record-vs" class="w-full border-gray-300 rounded p-1 border text-xs"></div>
+                            <div><label class="text-xs font-medium text-gray-500">KS</label><input type="text" id="record-ks" class="w-full border-gray-300 rounded p-1 border text-xs"></div>
+                            <div><label class="text-xs font-medium text-gray-500">ŠS</label><input type="text" id="record-ss" class="w-full border-gray-300 rounded p-1 border text-xs"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <div><label class="text-xs text-gray-500">Vystavenie</label><input type="date" id="record-date-vystavenia" class="w-full border-gray-300 rounded p-1 border text-xs"></div>
+                            <div><label class="text-xs text-gray-500">Dodanie</label><input type="date" id="record-date-dodania" class="w-full border-gray-300 rounded p-1 border text-xs"></div>
+                            <div><label class="text-xs text-gray-500">Splatnosť</label><input type="date" id="date-spl" class="w-full border-gray-300 rounded p-1 border text-xs"></div>
+                            <div><label id="lbl-date-uhr" class="text-xs text-gray-500">Dátum záznamu</label><input type="date" id="date-uhr" class="w-full border-blue-400 bg-blue-50 rounded p-1 border text-xs"></div>
+                        </div>
+                        <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Suma (€)</label><input type="number" step="0.01" id="amount" class="w-full border-gray-300 rounded p-2 border font-bold" required></div>
+                        <div class="mb-6"><label class="block text-sm font-medium text-gray-700 mb-1">Prílohy</label><input type="file" id="attachment" class="w-full border-gray-300 rounded p-2 border text-xs" accept=".pdf,.jpg,.jpeg,.png" multiple></div>
+                        <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white font-bold py-2 rounded shadow">Pridať záznam</button>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-lg shadow overflow-hidden xl:col-span-3">
+                    <div class="px-6 py-4 border-b bg-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <h2 class="text-xl font-bold">História záznamov</h2>
+                        <div class="flex flex-wrap gap-3 items-center">
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-gray-500 font-semibold uppercase"><i class="fas fa-filter mr-1"></i>Firma:</label>
+                                <select id="filter-partner" onchange="render()" class="border-gray-300 rounded p-1 text-xs bg-white border shadow-sm cursor-pointer focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="all">Všetci partneri</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2 border-l pl-3 border-gray-300">
+                                <button onclick="render('vsetky')" class="text-xs px-3 py-1 font-semibold bg-gray-200 hover:bg-gray-300 transition rounded shadow-sm">Všetky</button>
+                                <button onclick="render('vyparovane')" class="text-xs px-3 py-1 font-semibold bg-green-100 text-green-800 hover:bg-green-200 transition rounded shadow-sm">Vypárované</button>
+                                <button onclick="render('nevyparovane')" class="text-xs px-3 py-1 font-semibold bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition rounded shadow-sm">Nevypárované</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr class="text-xs text-gray-500 uppercase tracking-wider">
+                                    <th class="px-4 py-3 text-left">Dátumy</th>
+                                    <th class="px-4 py-3 text-left">Typ / Symboly</th>
+                                    <th class="px-4 py-3 text-left">Partner & Popis</th>
+                                    <th class="px-4 py-3 text-left">Prílohy</th>
+                                    <th class="px-4 py-3 text-right">Suma</th>
+                                    <th class="px-4 py-3 text-right">Akcie</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-table" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-content-partneri" class="hidden space-y-6">
+            <div class="flex justify-end"><button onclick="openPartnerModal()" class="bg-gray-800 text-white font-bold py-2 px-4 rounded shadow"><i class="fas fa-plus mr-2"></i>Nový partner</button></div>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="px-6 py-4 border-b bg-gray-50"><h2 class="text-xl font-bold">Zoznam partnerov</h2></div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 uppercase text-xs text-gray-500">
+                            <tr><th class="px-6 py-3 text-left">Partner</th><th class="px-6 py-3 text-left">Identifikátory</th><th class="px-6 py-3 text-left">Kontakty</th><th class="px-6 py-3 text-right">Akcie</th></tr>
+                        </thead>
+                        <tbody id="partners-table" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="partner-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 id="p-modal-title" class="text-lg font-bold">Partner</h3><button onclick="closePartnerModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button></div>
+            <div class="overflow-y-auto p-6 flex-1">
+                <form id="partner-form">
+                    <input type="hidden" id="p-id">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="md:col-span-3"><label class="block text-sm font-medium mb-1">Meno / Názov *</label><input type="text" id="p-name" class="w-full border rounded p-2" required></div>
+                        <div><label class="block text-sm font-medium mb-1">IČO</label><input type="text" id="p-ico" class="w-full border rounded p-2"></div>
+                        <div><label class="block text-sm font-medium mb-1">DIČ</label><input type="text" id="p-dic" class="w-full border rounded p-2"></div>
+                        <div><label class="block text-sm font-medium mb-1">IČ DPH</label><input type="text" id="p-icdph" class="w-full border rounded p-2"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium mb-1">Sídlo</label><input type="text" id="p-addr" class="w-full border rounded p-2"></div>
+                        <div><label class="block text-sm font-medium mb-1">IBAN</label><input type="text" id="p-iban" class="w-full border rounded p-2"></div>
+                        <div class="md:col-span-1"><label class="block text-sm font-medium mb-1">Web</label><input type="text" id="p-web" class="w-full border rounded p-2" placeholder="www.firma.sk"></div>
+                        <div class="md:col-span-2"><label class="block text-sm font-medium mb-1">FinStat (Odkaz)</label><input type="text" id="p-finstat" class="w-full border rounded p-2" placeholder="finstat.sk/..."></div>
+                    </div>
+                    <h4 class="font-bold border-b mb-4 flex justify-between">Kontaktné osoby <button type="button" onclick="addContactField('p-contacts')" class="text-blue-600 text-xs">+ Pridať</button></h4>
+                    <div id="p-contacts" class="space-y-3 bg-gray-50 p-3 rounded"></div>
+                </form>
+            </div>
+            <div class="px-6 py-4 border-t flex justify-end gap-2"><button onclick="closePartnerModal()" class="px-4 py-2 bg-gray-200 rounded">Zrušiť</button><button onclick="savePartner(event)" class="px-6 py-2 bg-blue-600 text-white font-bold rounded">Uložiť</button></div>
+        </div>
+    </div>
+
+    <div id="record-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex justify-center items-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center"><h3 class="text-lg font-bold text-blue-800"><i class="fas fa-edit mr-2"></i>Upraviť záznam</h3><button onclick="closeRecordModal()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button></div>
+            <form id="edit-record-form" class="p-6" onsubmit="handleRecordSubmit(event, 'update')">
+                <input type="hidden" id="e-id">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Typ záznamu</label>
+                        <select id="e-type" onchange="toggleParentField('e-type', 'e-parent-container', 'e-parent-select'); updateDateLabel('e-type', 'lbl-e-uhr')" class="w-full border rounded p-2 text-sm bg-white">
+                            <option value="faktura">Vystavená faktúra</option>
+                            <option value="prijem">Úhrada faktúry (Príjem)</option>
+                            <option value="odvod">Odvod (SP/ZP)</option>
+                            <option value="prijata_faktura">Prijatá faktúra</option>
+                            <option value="vydavok">Výdavok (Úhrada)</option>
+                        </select>
+                    </div>
+                    <div><label class="block text-sm font-medium mb-1">Partner</label><select id="e-partner" class="w-full border rounded p-2 text-sm bg-white"></select></div>
+                </div>
+                <div id="e-parent-container" class="mb-4 hidden bg-blue-50 p-2 rounded">
+                    <label class="block text-xs font-bold text-blue-700 mb-1 italic">Párovať k dokladu</label>
+                    <select id="e-parent-select" onchange="fillFromParent('e-parent-select', 'e-amount', 'e-desc', 'e-partner', 'e-vs', 'e-ks', 'e-ss')" class="w-full border rounded p-2 text-sm"></select>
+                </div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Popis</label><input type="text" id="e-desc" class="w-full border rounded p-2 text-sm" required></div>
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div><label class="text-xs text-gray-500">VS</label><input type="text" id="e-vs" class="border rounded p-1 text-xs w-full"></div>
+                    <div><label class="text-xs text-gray-500">KS</label><input type="text" id="e-ks" class="border rounded p-1 text-xs w-full"></div>
+                    <div><label class="text-xs text-gray-500">ŠS</label><input type="text" id="e-ss" class="border rounded p-1 text-xs w-full"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div><label class="text-xs text-gray-500">Vystavenie</label><input type="date" id="e-date-vystavenia" class="w-full border rounded p-1 border text-xs"></div>
+                    <div><label class="text-xs text-gray-500">Dodanie</label><input type="date" id="e-date-dodania" class="w-full border rounded p-1 border text-xs"></div>
+                    <div><label class="text-xs text-gray-500">Splatnosť</label><input type="date" id="e-spl" class="w-full border rounded p-1 text-xs"></div>
+                    <div><label id="lbl-e-uhr" class="text-xs text-gray-500">Dátum záznamu</label><input type="date" id="e-uhr" class="w-full border rounded p-1 text-xs bg-blue-50"></div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm text-gray-700 mb-1">Suma v €</label>
+                    <input type="number" step="0.01" id="e-amount" class="w-full border rounded p-2 text-sm font-bold" required>
+                </div>
+                <div class="flex justify-end gap-2 pt-4 border-t"><button type="button" onclick="closeRecordModal()" class="px-4 py-2 bg-gray-200 rounded">Zrušiť</button><button type="submit" class="px-6 py-2 bg-blue-600 text-white font-bold rounded shadow">Uložiť zmeny</button></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let records = [];
+        let partners = [];
+        let userProfile = {};
+
+        localforage.config({ name: 'ZivnostEvidencia', storeName: 'dokumenty' });
+
+        const formatCurrency = (amt) => parseFloat(amt).toFixed(2) + ' €';
+        const formatDate = (str) => str ? new Date(str).toLocaleDateString('sk-SK') : '';
+
+        const typeConfig = {
+            faktura: { label: 'Vystavená Fa', color: 'bg-blue-100 text-blue-800', isExpense: false },
+            prijem: { label: 'Príjem', color: 'bg-green-100 text-green-800', isExpense: false },
+            odvod: { label: 'Odvod', color: 'bg-red-100 text-red-800', isExpense: true },
+            prijata_faktura: { label: 'Prijatá Fa', color: 'bg-orange-100 text-orange-800', isExpense: false },
+            vydavok: { label: 'Výdavok', color: 'bg-purple-100 text-purple-800', isExpense: true }
+        };
+
+        async function init() {
+            document.getElementById('date-uhr').valueAsDate = new Date();
+            records = (await localforage.getItem('zivnost_data')) || [];
+            partners = (await localforage.getItem('zivnost_partneri')) || [];
+            userProfile = (await localforage.getItem('zivnost_profil')) || {};
+            
+            if (userProfile.meno) renderProfileDisplay();
+            else toggleProfileEdit();
+            
+            updateDateLabel('type', 'lbl-date-uhr');
+            renderPartners();
+            render();
+        }
+
+        // --- TABS & PROFILE ---
+        function switchTab(t) {
+            document.getElementById('tab-content-evidencia').classList.toggle('hidden', t !== 'evidencia');
+            document.getElementById('tab-content-partneri').classList.toggle('hidden', t !== 'partneri');
+            document.getElementById('tab-btn-evidencia').className = t === 'evidencia' ? "py-2 px-4 font-bold text-sm border-b-2 border-blue-600 text-blue-600" : "py-2 px-4 font-medium text-sm text-gray-500 border-transparent";
+            document.getElementById('tab-btn-partneri').className = t === 'partneri' ? "py-2 px-4 font-bold text-sm border-b-2 border-gray-800 text-gray-800" : "py-2 px-4 font-medium text-sm text-gray-500 border-transparent";
+        }
+
+        function toggleProfileEdit() {
+            document.getElementById('profile-display').classList.toggle('hidden');
+            const form = document.getElementById('profile-form');
+            form.classList.toggle('hidden');
+            if(!form.classList.contains('hidden')) {
+                document.getElementById('prof-meno').value = userProfile.meno || '';
+                document.getElementById('prof-ico').value = userProfile.ico || '';
+                document.getElementById('prof-dic').value = userProfile.dic || '';
+                document.getElementById('prof-sidlo').value = userProfile.sidlo || '';
+                document.getElementById('prof-iban').value = userProfile.iban || '';
+            }
+        }
+
+        async function saveProfile(e) {
+            e.preventDefault();
+            userProfile = { meno: document.getElementById('prof-meno').value, ico: document.getElementById('prof-ico').value, dic: document.getElementById('prof-dic').value, sidlo: document.getElementById('prof-sidlo').value, iban: document.getElementById('prof-iban').value };
+            await localforage.setItem('zivnost_profil', userProfile);
+            renderProfileDisplay(); toggleProfileEdit();
+        }
+        function renderProfileDisplay() {
+            document.getElementById('disp-meno').innerText = userProfile.meno || '-';
+            document.getElementById('disp-ico').innerText = userProfile.ico || '-';
+            document.getElementById('disp-dic').innerText = userProfile.dic || '-';
+            document.getElementById('disp-sidlo').innerText = userProfile.sidlo || '-';
+            document.getElementById('disp-iban').innerText = userProfile.iban || '-';
+        }
+
+        // --- PARTNERS ---
+        function addContactField(id, data = { name:'', department:'', phone:'', email:'' }) {
+            const html = `<div class="bg-white p-2 border rounded relative text-sm grid grid-cols-2 gap-2"><button type="button" class="absolute -top-2 -right-2 bg-white rounded-full text-red-500 p-1" onclick="this.parentElement.remove()">×</button><input type="text" class="c-name border rounded p-1" placeholder="Meno" value="${data.name}"><input type="text" class="c-dep border rounded p-1" placeholder="Oddelenie" value="${data.department}"><input type="text" class="c-phone border rounded p-1" placeholder="Tel" value="${data.phone}"><input type="text" class="c-email border rounded p-1" placeholder="Email" value="${data.email}"></div>`;
+            document.getElementById(id).insertAdjacentHTML('beforeend', html);
+        }
+
+        async function renderPartners() {
+            const t = document.getElementById('partners-table'); t.innerHTML = '';
+            
+            // Zálohujeme aktuálny stav vybratého partnera vo filtri histórie
+            const filterSel = document.getElementById('filter-partner');
+            const currentFilterVal = filterSel ? filterSel.value : 'all';
+            
+            const sel = document.getElementById('record-partner'); sel.innerHTML = '<option value="">-- Žiadny partner --</option>';
+            const esel = document.getElementById('e-partner'); esel.innerHTML = '<option value="">-- Žiadny partner --</option>';
+            if(filterSel) filterSel.innerHTML = '<option value="all">Všetci partneri</option>';
+
+            document.getElementById('partner-count').innerText = partners.length;
+            partners.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
+                const contactsHtml = (p.contacts || []).map(c => `<div class="text-xs"><strong>${c.name}</strong> (${c.email || c.phone})</div>`).join('') || '-';
+                
+                const webLink = p.web ? `<a href="${p.web.startsWith('http') ? p.web : 'https://'+p.web}" target="_blank" class="text-blue-500 hover:underline"><i class="fas fa-globe"></i> ${p.web}</a>` : '';
+                const finstatLink = p.finstat ? `<a href="${p.finstat.startsWith('http') ? p.finstat : 'https://'+p.finstat}" target="_blank" class="text-blue-500 hover:underline"><i class="fas fa-chart-line"></i> FinStat</a>` : '';
+                const ibanInfo = p.iban ? `<strong>IBAN:</strong> ${p.iban}` : '';
+                
+                const idHtml = `
+                    <div><strong>IČO:</strong> ${p.ico || '-'}</div>
+                    <div><strong>DIČ:</strong> ${p.dic || '-'}</div>
+                    <div><strong>IČ DPH:</strong> ${p.icdph || '-'}</div>
+                    ${ibanInfo ? `<div class="mt-1">${ibanInfo}</div>` : ''}
+                    <div class="mt-1 flex flex-col gap-1">
+                        ${webLink}
+                        ${finstatLink}
+                    </div>
+                `;
+
+                t.insertAdjacentHTML('beforeend', `<tr>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-gray-900">${p.name}</div>
+                        <div class="text-xs text-gray-500 mt-1">${p.address || ''}</div>
+                    </td>
+                    <td class="px-6 py-4 text-xs text-gray-600">${idHtml}</td>
+                    <td class="px-6 py-4">${contactsHtml}</td>
+                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                        <button onclick="openPartnerModal(${p.id})" class="text-blue-600 mr-3 hover:text-blue-800"><i class="fas fa-edit text-lg"></i></button>
+                        <button onclick="deletePartner(${p.id})" class="text-red-600 hover:text-red-800"><i class="fas fa-trash text-lg"></i></button>
+                    </td>
+                </tr>`);
+                
+                const opt = `<option value="${p.id}">${p.name}</option>`;
+                sel.insertAdjacentHTML('beforeend', opt); 
+                esel.insertAdjacentHTML('beforeend', opt);
+                if(filterSel) filterSel.insertAdjacentHTML('beforeend', opt);
+            });
+            
+            // Vrátime filter na pôvodnú hodnotu po prekreslení možností
+            if(filterSel) filterSel.value = currentFilterVal || 'all';
+
+            await localforage.setItem('zivnost_partneri', partners);
+        }
+
+        function openPartnerModal(id = null) {
+            document.getElementById('p-modal-title').innerText = id ? 'Upraviť partnera' : 'Nový partner';
+            document.getElementById('p-id').value = id || '';
+            document.getElementById('p-contacts').innerHTML = '';
+            if(id) {
+                const p = partners.find(x => x.id === id);
+                document.getElementById('p-name').value = p.name; 
+                document.getElementById('p-ico').value = p.ico || ''; 
+                document.getElementById('p-dic').value = p.dic || ''; 
+                document.getElementById('p-icdph').value = p.icdph || ''; 
+                document.getElementById('p-addr').value = p.address || ''; 
+                document.getElementById('p-iban').value = p.iban || ''; 
+                document.getElementById('p-web').value = p.web || '';
+                document.getElementById('p-finstat').value = p.finstat || '';
+                (p.contacts || []).forEach(c => addContactField('p-contacts', c));
+            } else { document.getElementById('partner-form').reset(); addContactField('p-contacts'); }
+            document.getElementById('partner-modal').classList.remove('hidden');
+        }
+        function closePartnerModal() { document.getElementById('partner-modal').classList.add('hidden'); }
+        async function savePartner(e) {
+            e.preventDefault(); const id = document.getElementById('p-id').value;
+            const data = { 
+                id: id ? parseInt(id) : Date.now(), 
+                name: document.getElementById('p-name').value, 
+                ico: document.getElementById('p-ico').value, 
+                dic: document.getElementById('p-dic').value, 
+                icdph: document.getElementById('p-icdph').value, 
+                address: document.getElementById('p-addr').value, 
+                iban: document.getElementById('p-iban').value, 
+                web: document.getElementById('p-web').value, 
+                finstat: document.getElementById('p-finstat').value, 
+                contacts: Array.from(document.querySelectorAll('#p-contacts > div')).map(row => ({ name: row.querySelector('.c-name').value, department: row.querySelector('.c-dep').value, phone: row.querySelector('.c-phone').value, email: row.querySelector('.c-email').value })) 
+            };
+            if(id) partners = partners.map(p => p.id === data.id ? data : p); else partners.push(data);
+            await renderPartners(); render(); closePartnerModal();
+        }
+        async function deletePartner(id) { if(confirm('Vymazať partnera?')) { partners = partners.filter(p => p.id !== id); await renderPartners(); render(); } }
+
+        // --- ZMENA POVINNOSTI DÁTUMU ---
+        function updateDateLabel(typeId, labelId) {
+            const type = document.getElementById(typeId).value;
+            const lbl = document.getElementById(labelId);
+            if (['prijem', 'vydavok', 'odvod'].includes(type)) {
+                lbl.innerHTML = 'Dátum úhrady *';
+                lbl.className = 'text-xs font-bold text-blue-600';
+            } else {
+                lbl.innerHTML = 'Dátum záznamu';
+                lbl.className = 'text-xs text-gray-500';
+            }
+        }
+
+        // --- PAIRING LOGIC ---
+        function getRelatedPayments(invoiceId) { return records.filter(r => r.linkedTo == invoiceId); }
+        function getPaidAmount(invoiceId) { return getRelatedPayments(invoiceId).reduce((sum, r) => sum + parseFloat(r.amount), 0); }
+        function isFullyPaid(r) {
+            if (r.type !== 'faktura' && r.type !== 'prijata_faktura') return true;
+            return getPaidAmount(r.id) >= parseFloat(r.amount);
+        }
+
+        function toggleParentField(typeId, containerId, selectId, currentLinkedId = null) {
+            const type = document.getElementById(typeId).value;
+            const cont = document.getElementById(containerId);
+            const sel = document.getElementById(selectId);
+            if (['prijem', 'vydavok'].includes(type)) {
+                cont.classList.remove('hidden');
+                sel.innerHTML = '<option value="">-- Vyber doklad --</option>';
+                const target = type === 'prijem' ? 'faktura' : 'prijata_faktura';
+                
+                records.filter(r => r.type === target && (!isFullyPaid(r) || r.id == currentLinkedId)).forEach(r => {
+                    const p = partners.find(x => x.id == r.partnerId);
+                    const pName = p ? p.name : 'Neznámy partner';
+                    const vsTxt = r.vs ? `VS: ${r.vs} | ` : '';
+                    
+                    sel.insertAdjacentHTML('beforeend', `<option value="${r.id}">${formatDate(r.dateVystavenia || r.date)} | ${vsTxt}${pName} | ${r.description} | ${formatCurrency(r.amount)}</option>`);
+                });
+                if(currentLinkedId) sel.value = currentLinkedId;
+            } else {
+                cont.classList.add('hidden');
+            }
+        }
+
+        function fillFromParent(selId, amtId, descId, partId, vsId, ksId, ssId) {
+            const id = document.getElementById(selId).value; 
+            if(!id) return;
+            const p = records.find(r => r.id == id);
+            document.getElementById(amtId).value = p.amount;
+            document.getElementById(descId).value = `Úhrada: ${p.description}`;
+            document.getElementById(partId).value = p.partnerId || '';
+            document.getElementById(vsId).value = p.vs || '';
+            document.getElementById(ksId).value = p.ks || '';
+            document.getElementById(ssId).value = p.ss || '';
+        }
+
+        // --- RECORDS ---
+        let currentFilter = 'vsetky';
+
+        async function render(filterArg) {
+            // Skontrolujeme, či filter zavolalo kliknutie na tlačidlo stavu, inak ponecháme aktuálny stav.
+            if (typeof filterArg === 'string') {
+                currentFilter = filterArg;
+            }
+
+            const t = document.getElementById('records-table'); t.innerHTML = '';
+            
+            let sums = { faktura: 0, prijem: 0, odvod: 0, prijata_faktura: 0, vydavok: 0 };
+            records.forEach(r => { sums[r.type] += parseFloat(r.amount); });
+            
+            document.getElementById('stat-prijmy').innerText = formatCurrency(sums.prijem); 
+            document.getElementById('stat-odvody').innerText = formatCurrency(sums.odvod); 
+            document.getElementById('stat-faktury').innerText = formatCurrency(sums.faktura); 
+            document.getElementById('stat-prijate-fa').innerText = formatCurrency(sums.prijata_faktura); 
+            document.getElementById('stat-vydavky').innerText = formatCurrency(sums.vydavok);
+
+            const selectedPartnerId = document.getElementById('filter-partner').value;
+
+            let filtered = records.filter(r => {
+                // Filter na konkrétneho partnera
+                if (selectedPartnerId !== 'all' && r.partnerId != selectedPartnerId) return false;
+
+                // Filter na stav párovania
+                if (currentFilter === 'vyparovane') return isFullyPaid(r) && (r.type === 'faktura' || r.type === 'prijata_faktura');
+                if (currentFilter === 'nevyparovane') return !isFullyPaid(r) && (r.type === 'faktura' || r.type === 'prijata_faktura');
+                return true;
+            });
+
+            filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(r => {
+                const config = typeConfig[r.type];
+                const p = partners.find(x => x.id == r.partnerId);
+                const attHtml = (r.attachments || []).map(a => `<a href="${a.data}" download="${a.name}" class="text-blue-500 block text-xs truncate max-w-[100px] hover:underline"><i class="fas fa-paperclip"></i> ${a.name}</a>`).join('') || '-';
+                
+                const fullyPaid = isFullyPaid(r);
+                let statusBadge = '';
+                if (r.type === 'faktura' || r.type === 'prijata_faktura') {
+                    statusBadge = `<div class="mt-1"><span class="px-2 py-0.5 text-[10px] rounded ${fullyPaid ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'} font-bold">${fullyPaid ? 'Vypárované' : 'Čiastočné: ' + getPaidAmount(r.id).toFixed(2) + '€'}</span></div>`;
+                }
+
+                const dUhr = r.date ? `<span class="font-bold text-blue-700" title="Záznam / Úhrada">Úhr: ${formatDate(r.date)}</span>` : '';
+                const dVys = r.dateVystavenia ? `<span title="Vystavenie" class="text-gray-500">Vys: ${formatDate(r.dateVystavenia)}</span>` : '';
+                const dDod = r.dateDodania ? `<span title="Dodanie" class="text-gray-500">Dod: ${formatDate(r.dateDodania)}</span>` : '';
+                const dSpl = r.dateSplatnosti ? `<span title="Splatnosť" class="text-red-500">Spl: ${formatDate(r.dateSplatnosti)}</span>` : '';
+                const datesHtml = [dUhr, dVys, dDod, dSpl].filter(Boolean).join('<br>');
+
+                const symbols = [r.vs ? `VS:${r.vs}` : '', r.ks ? `KS:${r.ks}` : '', r.ss ? `ŠS:${r.ss}` : ''].filter(Boolean).join(' | ') || '-';
+
+                t.insertAdjacentHTML('beforeend', `
+                    <tr class="text-sm hover:bg-gray-50 transition">
+                        <td class="px-4 py-3 text-xs whitespace-nowrap leading-tight">${datesHtml}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold ${config.color}">${config.label}</span>
+                            ${statusBadge}
+                            <div class="text-[10px] text-gray-500 mt-1">${symbols}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-gray-700">${p ? p.name : '-'}</div>
+                            <div class="text-xs text-gray-500">${r.description}</div>
+                        </td>
+                        <td class="px-4 py-3">${attHtml}</td>
+                        <td class="px-4 py-3 text-right font-bold ${config.isExpense ? 'text-red-600' : ''}">${config.isExpense ? '-' : ''}${formatCurrency(r.amount)}</td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="openEditRecordModal(${r.id})" class="text-blue-600 mr-3 hover:text-blue-900"><i class="fas fa-edit text-lg"></i></button>
+                            <button onclick="deleteRecord(${r.id})" class="text-red-600 hover:text-red-900"><i class="fas fa-trash text-lg"></i></button>
+                        </td>
+                    </tr>
+                `);
+            });
+
+            await localforage.setItem('zivnost_data', records);
+        }
+
+        async function handleRecordSubmit(e, action) {
+            e.preventDefault();
+            const prefix = action === 'add' ? '' : 'e-';
+            const btn = e.target.querySelector('button[type="submit"]');
+            
+            const selectedType = document.getElementById(prefix + 'type').value;
+            const dateVal = document.getElementById(prefix + (action === 'add' ? 'date-uhr' : 'uhr')).value;
+            const isPayment = ['prijem', 'vydavok', 'odvod'].includes(selectedType);
+
+            if (isPayment && !dateVal) {
+                alert('Dátum úhrady je povinný pre typy Úhrada a Odvody.');
+                return;
+            }
+
+            btn.disabled = true;
+
+            let attachments = [];
+            if(action === 'add') {
+                const files = document.getElementById('attachment').files;
+                for(let f of files) { 
+                    const base64 = await new Promise(res => { const reader = new FileReader(); reader.onload = () => res(reader.result); reader.readAsDataURL(f); });
+                    attachments.push({ name: f.name, data: base64 });
+                }
+            }
+
+            const data = {
+                id: action === 'add' ? Date.now() : parseInt(document.getElementById('e-id').value),
+                type: selectedType,
+                partnerId: document.getElementById(prefix + (action === 'add' ? 'record-partner' : 'partner')).value || null,
+                linkedTo: document.getElementById(prefix + (action === 'add' ? 'parent-select' : 'parent-select')).value || null,
+                date: dateVal || null,
+                dateVystavenia: document.getElementById(prefix + (action === 'add' ? 'record-date-vystavenia' : 'date-vystavenia')).value || null,
+                dateDodania: document.getElementById(prefix + (action === 'add' ? 'record-date-dodania' : 'date-dodania')).value || null,
+                dateSplatnosti: document.getElementById(prefix + (action === 'add' ? 'date-spl' : 'spl')).value || null,
+                amount: parseFloat(document.getElementById(prefix + 'amount').value),
+                description: document.getElementById(prefix + (action === 'add' ? 'description' : 'desc')).value,
+                vs: document.getElementById(prefix + (action === 'add' ? 'record-vs' : 'vs')).value,
+                ks: document.getElementById(prefix + (action === 'add' ? 'record-ks' : 'ks')).value,
+                ss: document.getElementById(prefix + (action === 'add' ? 'record-ss' : 'ss')).value,
+                attachments: action === 'add' ? attachments : (records.find(r => r.id == document.getElementById('e-id').value).attachments || [])
+            };
+
+            if (data.linkedTo && data.date && isPayment) {
+                const parentRecord = records.find(r => r.id == data.linkedTo);
+                if (parentRecord) {
+                    parentRecord.date = data.date; 
+                }
+            }
+
+            if(action === 'add') records.push(data);
+            else records = records.map(r => r.id === data.id ? {...r, ...data} : r);
+            
+            if(action === 'add') document.getElementById('record-form').reset();
+            else closeRecordModal();
+            
+            await render(); btn.disabled = false;
+        }
+
+        function openEditRecordModal(id) {
+            const r = records.find(x => x.id === id);
+            document.getElementById('e-id').value = r.id;
+            document.getElementById('e-type').value = r.type;
+            document.getElementById('e-partner').value = r.partnerId || '';
+            document.getElementById('e-uhr').value = r.date || '';
+            document.getElementById('e-date-vystavenia').value = r.dateVystavenia || '';
+            document.getElementById('e-date-dodania').value = r.dateDodania || '';
+            document.getElementById('e-spl').value = r.dateSplatnosti || '';
+            document.getElementById('e-amount').value = r.amount;
+            document.getElementById('e-desc').value = r.description;
+            document.getElementById('e-vs').value = r.vs || '';
+            document.getElementById('e-ks').value = r.ks || '';
+            document.getElementById('e-ss').value = r.ss || '';
+            
+            updateDateLabel('e-type', 'lbl-e-uhr');
+            toggleParentField('e-type', 'e-parent-container', 'e-parent-select', r.linkedTo);
+            
+            document.getElementById('record-modal').classList.remove('hidden');
+        }
+        function closeRecordModal() { document.getElementById('record-modal').classList.add('hidden'); }
+
+        async function deleteRecord(id) { if(confirm('Vymazať záznam? (Zmaže to aj stav párovania s ním spojený)')) { records = records.filter(r => r.id !== id); await render(); } }
+
+        // --- EXPORT / IMPORT ---
+        function exportToCSV() {
+            let csv = "\uFEFFDatum Uhrady;Datum Vystavenia;Datum Dodania;Datum Splatnosti;Typ;Partner;VS;KS;SS;Popis;Suma v EUR\n";
+            records.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach(r => {
+                const p = partners.find(x => x.id == r.partnerId);
+                csv += `${formatDate(r.date)};${formatDate(r.dateVystavenia)};${formatDate(r.dateDodania)};${formatDate(r.dateSplatnosti)};${typeConfig[r.type].label};${p ? p.name : ''};${r.vs||''};${r.ks||''};${r.ss||''};${r.description};${r.amount.toFixed(2).replace('.',',')}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const lnk = document.createElement("a"); lnk.href = URL.createObjectURL(blob); lnk.download = "evidencia.csv"; lnk.click();
+        }
+        
+        function exportToJSON() {
+            const data = JSON.stringify({ profile: userProfile, partners, records }, null, 4);
+            const blob = new Blob([data], { type: 'application/json' });
+            const lnk = document.createElement("a"); 
+            lnk.href = URL.createObjectURL(blob); 
+            
+            const pad = n => String(n).padStart(2, '0');
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+            lnk.download = `zaloha_${timestamp}.json`; 
+            lnk.click();
+        }
+        
+        function triggerImport() { document.getElementById('import-file').click(); }
+        async function importFromJSON(e) {
+            const file = e.target.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(ev) {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    if(confirm('Prepísať aktuálne dáta zálohou?')) {
+                        userProfile = data.profile || {}; partners = data.partners || []; records = data.records || [];
+                        await localforage.setItem('zivnost_profil', userProfile); await renderPartners(); await render(); alert('Obnovené.');
+                    }
+                } catch (err) { alert('Chyba súboru.'); }
+            }; reader.readAsText(file);
+        }
+
+        async function clearData() { if(confirm('ZMAZAŤ VŠETKO?')) { await localforage.clear(); location.reload(); } }
+
+        init();
+    </script>
+</body>
+</html>
